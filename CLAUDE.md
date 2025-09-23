@@ -109,3 +109,123 @@ Configure in Vercel dashboard:
 ### 5. File Upload Handling
 - Use `@vercel/node` compatible multer configuration
 - Maintain existing base64 encoding for OpenAI API transmission
+
+## Next.js Migration Plan
+
+**STATUS**: Planned - migrating from Express + Vite to Next.js App Router
+
+### Migration Constraints
+- **MINIMIZE CHANGES**: Keep existing UI, API behavior, and data structures unchanged
+- **NO FUNCTIONAL MODIFICATIONS**: Maintain exact same user experience and API responses
+- **PRESERVE EXISTING LOGIC**: Only change framework/architecture, not business logic
+
+### Migration Steps
+1. **Project Initialization**
+   - Create Next.js project with TypeScript, Tailwind, App Router
+   - Remove Express dependencies: `express`, `express-session`, `connect-pg-simple`
+   - Remove Vite dependencies: `vite`, `@vitejs/plugin-react`
+   - Remove routing: `wouter` (use Next.js router)
+
+2. **Folder Structure Conversion**
+   ```
+   src/app/                 # Next.js App Router
+   ├── layout.tsx          # Root layout
+   ├── page.tsx            # Home (/)
+   ├── results/page.tsx    # Results (/results)
+   ├── shared/[id]/page.tsx # Shared (/shared/[id])
+   └── api/                # API Routes
+       ├── generate-tweet/route.ts
+       ├── share/route.ts
+       └── shared/[id]/
+           ├── route.ts
+           └── image/route.ts
+   src/components/         # UI components (from client/src/components)
+   src/lib/               # Utils + shared schemas
+   src/hooks/             # Custom hooks
+   ```
+
+3. **API Routes Migration**
+   - Convert Express routes to Next.js Route Handlers
+   - Change from `(req, res)` to `Request/Response` pattern
+   - **PRESERVE EXACT API BEHAVIOR**: Keep same request/response formats, error handling, and status codes
+   - Maintain existing business logic and database connections without modification
+
+4. **Component Migration**
+   - Convert pages from Wouter to Next.js pages
+   - Replace `wouter` Link with Next.js Link
+   - **PRESERVE EXACT UI**: Keep existing UI components, hooks, and styling without visual changes
+   - Maintain same component props, state management, and user interactions
+
+5. **Metadata & SSR Enhancement**
+   - Use Next.js metadata API for social sharing
+   - Implement proper SSR for shared pages
+   - **PRESERVE EXACT METADATA**: Maintain identical Open Graph and Twitter Card meta tags
+   - Keep same social sharing behavior and preview generation
+
+6. **Configuration Updates**
+   - Create `next.config.js`
+   - Update `tailwind.config.ts` for Next.js
+   - Simplify `package.json` scripts
+   - Remove `vercel.json` complexity (Next.js handles deployment)
+
+### Benefits
+- Remove Express/Vercel Functions complexity
+- Better SSR and metadata handling
+- Unified development experience
+- Automatic optimizations (images, fonts, etc.)
+- Simpler deployment to Vercel
+
+### Files and Dependencies to Remove
+
+#### Complete File Removal
+```bash
+server/                    # Entire Express server folder
+├── index.ts              # Express app setup
+├── vite.ts               # Vite dev server integration
+├── routes.ts             # Express routes (already migrated to api/)
+├── storage.ts            # Express session storage
+└── db.ts                 # (move to lib/)
+
+vite.config.ts            # Replaced by Next.js
+vercel.json               # Next.js handles deployment automatically
+client/index.html         # Next.js auto-generates
+client/src/main.tsx       # Next.js handles automatically
+client/src/App.tsx        # Convert to layout.tsx
+```
+
+#### Package.json Dependencies to Remove
+```json
+{
+  "dependencies": {
+    "express": "^4.21.2",           // Express server
+    "express-session": "^1.18.1",  // Session management (unused)
+    "connect-pg-simple": "^10.0.0", // Session storage
+    "memorystore": "^1.6.7",       // Memory sessions
+    "passport": "^0.7.0",          // Authentication (unused)
+    "passport-local": "^1.0.0",    // Local auth
+    "wouter": "^3.3.5"            // Client routing
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.2",  // Vite React
+    "vite": "^5.4.19",                 // Vite build tool
+    "@vercel/node": "^3.0.0"           // Vercel Functions
+  }
+}
+```
+
+#### Code Elements to Remove
+- `wouter` routing (Link, Route, Router components)
+- Express-related types and middleware
+- Vite HMR related code
+- Session/authentication code (currently unused)
+- WebSocket related code
+
+#### Files to Keep (with modifications)
+- `postcss.config.js` - Tailwind setup
+- `components.json` - shadcn/ui configuration
+- `tailwind.config.ts` - Style configuration (update paths)
+- `drizzle.config.ts` - Database configuration
+- All UI components in `client/src/components/`
+- API logic in `api/` folder (convert to Next.js route handlers)
+
+**Result**: ~15 files removed + 10 dependencies removed = significantly smaller project size

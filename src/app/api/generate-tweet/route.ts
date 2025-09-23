@@ -1,63 +1,38 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import multer from 'multer';
+import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { db } from '../server/db.js';
 import {
   generateTweetRequestSchema,
   type GenerateTweetResponse
-} from '../shared/schema.js';
-
-// Configure multer for Vercel
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-  },
-  fileFilter: (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
-    }
-  },
-});
+} from '@shared/schema';
 
 // Initialize OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "your-api-key-here",
 });
 
-// Helper function to handle multer in Vercel
-function runMiddleware(req: any, res: any, fn: any) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result: any) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-}
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
+export async function POST(request: NextRequest) {
   try {
-    // Run multer middleware
-    await runMiddleware(req, res, upload.array('images', 4));
+    const formData = await request.formData();
 
-    const { restaurantName, menus, satisfaction } = req.body;
-    const files = (req as any).files as Express.Multer.File[] | undefined;
+    const restaurantName = formData.get('restaurantName') as string | null;
+    const menus = formData.get('menus') as string;
+    const satisfaction = formData.get('satisfaction') as string;
+    const imageFiles = formData.getAll('images') as File[];
 
-    if (!files || files.length === 0) {
-      return res.status(400).json({ message: "이미지를 하나 이상 업로드해주세요." });
+    if (!imageFiles || imageFiles.length === 0) {
+      return NextResponse.json(
+        { message: "이미지를 하나 이상 업로드해주세요." },
+        { status: 400 }
+      );
     }
 
     // Convert images to base64
-    const images = files.map(file => file.buffer.toString('base64'));
+    const images = await Promise.all(
+      imageFiles.map(async (file) => {
+        const buffer = await file.arrayBuffer();
+        return Buffer.from(buffer).toString('base64');
+      })
+    );
 
     // Parse menus from string if needed
     const parsedMenus = typeof menus === 'string' ? JSON.parse(menus) : menus;
@@ -121,13 +96,19 @@ JSON 형식으로 응답해주세요:
       variations: result.variations || []
     };
 
-    res.json(tweetResponse);
+    return NextResponse.json(tweetResponse);
   } catch (error) {
     console.error("Tweet generation error:", error);
     if (error instanceof Error) {
-      res.status(500).json({ message: `트윗 생성 중 오류가 발생했습니다: ${error.message}` });
+      return NextResponse.json(
+        { message: `트윗 생성 중 오류가 발생했습니다: ${error.message}` },
+        { status: 500 }
+      );
     } else {
-      res.status(500).json({ message: "트윗 생성 중 오류가 발생했습니다." });
+      return NextResponse.json(
+        { message: "트윗 생성 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
     }
   }
 }

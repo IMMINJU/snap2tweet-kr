@@ -1,5 +1,7 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, RotateCcw, Twitter, Share2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TweetResult } from "@/components/tweet-result";
@@ -10,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { type GenerateTweetRequest, type TweetVariation } from "@shared/schema";
 
 export default function Results() {
-  const [, setLocation] = useLocation();
+  const router = useRouter();
   const { toast } = useToast();
   const [tweets, setTweets] = useState<TweetVariation[]>([]);
   const [requestData, setRequestData] = useState<GenerateTweetRequest | null>(null);
@@ -20,12 +22,12 @@ export default function Results() {
 
   useEffect(() => {
     let tweets, request;
-    
+
     // Try sessionStorage first
     try {
       const storedTweets = sessionStorage.getItem('generatedTweets');
       const storedRequest = sessionStorage.getItem('tweetRequest');
-      
+
       if (storedTweets) {
         tweets = JSON.parse(storedTweets);
       }
@@ -35,7 +37,7 @@ export default function Results() {
     } catch (e) {
       console.log('sessionStorage failed, checking temp data');
     }
-    
+
     // Fallback to temp memory storage for iOS
     if (!tweets || !request) {
       const tempData = (window as any).__tempTweetData;
@@ -46,7 +48,7 @@ export default function Results() {
         delete (window as any).__tempTweetData;
       }
     }
-    
+
     if (tweets) {
       setTweets(tweets);
     }
@@ -56,9 +58,9 @@ export default function Results() {
     }
 
     if (!tweets || !request) {
-      setLocation('/');
+      router.push('/');
     }
-  }, [setLocation]);
+  }, [router]);
 
   const regenerateMutation = useMutation({
     mutationFn: generateTweet,
@@ -71,7 +73,7 @@ export default function Results() {
         });
         return;
       }
-      
+
       setTweets(data.variations);
       try {
         sessionStorage.setItem('generatedTweets', JSON.stringify(data.variations));
@@ -86,10 +88,10 @@ export default function Results() {
     },
     onError: (error: any) => {
       console.error('트윗 재생성 에러:', error);
-      
+
       let title = "재생성 실패";
       let description = "다시 시도해주세요.";
-      
+
       if (error.message?.includes('API key')) {
         title = "API 키 오류";
         description = "OpenAI API 키를 확인해주세요.";
@@ -102,7 +104,7 @@ export default function Results() {
       } else if (error.message) {
         description = error.message;
       }
-      
+
       toast({
         title,
         description,
@@ -117,7 +119,7 @@ export default function Results() {
       const url = `${window.location.origin}/shared/${data.shareId}`;
       setShareUrl(url);
       setIsShared(true);
-      
+
       // Copy to clipboard
       navigator.clipboard.writeText(url).then(() => {
         toast({
@@ -170,7 +172,7 @@ export default function Results() {
   };
 
   const goBack = () => {
-    setLocation('/');
+    router.push('/');
   };
 
   if (!requestData) {
@@ -200,15 +202,15 @@ export default function Results() {
       <header className="border-b bg-white sticky top-0 z-50">
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={goBack}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="w-4 h-4" />
               뒤로가기
             </Button>
-            
+
             <div className="flex items-center gap-2">
               <Twitter className="w-5 h-5 text-blue-500" />
               <span className="font-semibold text-gray-900">생성된 트윗</span>
@@ -233,7 +235,7 @@ export default function Results() {
                   </>
                 )}
               </Button>
-              
+
               <Button
                 variant="outline"
                 onClick={handleRegenerate}
@@ -288,13 +290,13 @@ export default function Results() {
       </main>
 
       {/* Loading Overlays */}
-      <LoadingOverlay 
-        isVisible={shareMutation.isPending} 
+      <LoadingOverlay
+        isVisible={shareMutation.isPending}
         message="공유 링크를 생성하고 있습니다"
         submessage="소셜미디어에서 예쁘게 보이도록 준비 중이에요"
       />
-      <LoadingOverlay 
-        isVisible={regenerateMutation.isPending} 
+      <LoadingOverlay
+        isVisible={regenerateMutation.isPending}
         message="새로운 트윗을 생성하고 있습니다"
         submessage="더 멋진 표현으로 다시 써보고 있어요"
       />

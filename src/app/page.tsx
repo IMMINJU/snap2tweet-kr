@@ -1,6 +1,8 @@
+"use client";
+
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useRouter } from "next/navigation";
 import { Camera, Star, Twitter, Sparkles } from "lucide-react";
 import { ImageUpload } from "@/components/image-upload";
 import { MenuInput } from "@/components/menu-input";
@@ -15,7 +17,7 @@ import { type GenerateTweetRequest, satisfactionLevels } from "@shared/schema";
 
 export default function Home() {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const router = useRouter();
   const [images, setImages] = useState<string[]>([]);
   const [restaurantName, setRestaurantName] = useState("");
   const [menus, setMenus] = useState<string[]>([]);
@@ -33,7 +35,7 @@ export default function Home() {
         });
         return;
       }
-      
+
       // Store data in sessionStorage and navigate to results with iOS error handling
       try {
         const requestData = {
@@ -42,10 +44,10 @@ export default function Home() {
           menus,
           satisfaction,
         };
-        
+
         sessionStorage.setItem('generatedTweets', JSON.stringify(data.variations));
         sessionStorage.setItem('tweetRequest', JSON.stringify(requestData));
-        setLocation('/results');
+        router.push('/results');
       } catch (e) {
         console.error('sessionStorage quota exceeded:', e);
         toast({
@@ -53,7 +55,7 @@ export default function Home() {
           description: "결과를 임시 저장할 수 없습니다. 이미지 크기를 줄여주세요.",
           variant: "destructive",
         });
-        
+
         // 임시 메모리 저장으로 폴백
         (window as any).__tempTweetData = {
           variations: data.variations,
@@ -64,15 +66,15 @@ export default function Home() {
             satisfaction,
           }
         };
-        setLocation('/results');
+        router.push('/results');
       }
     },
     onError: (error: any) => {
       console.error('트윗 생성 에러:', error);
-      
+
       let title = "트윗 생성 실패";
       let description = "다시 시도해주세요.";
-      
+
       if (error.message?.includes('API key')) {
         title = "API 키 오류";
         description = "OpenAI API 키를 확인해주세요.";
@@ -88,7 +90,7 @@ export default function Home() {
       } else if (error.message) {
         description = error.message;
       }
-      
+
       toast({
         title,
         description,
@@ -199,7 +201,7 @@ export default function Home() {
           </div>
 
           {/* Generate Button */}
-          <Button 
+          <Button
             onClick={handleGenerate}
             disabled={generateMutation.isPending}
             className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 text-base font-medium"
@@ -224,8 +226,8 @@ export default function Home() {
       </main>
 
       {/* Loading Overlay */}
-      <LoadingOverlay 
-        isVisible={generateMutation.isPending} 
+      <LoadingOverlay
+        isVisible={generateMutation.isPending}
         message="AI가 트윗을 생성하고 있습니다"
         submessage="음식 사진을 분석하고 멋진 트윗을 작성 중이에요"
       />
