@@ -2,7 +2,8 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { sharedTweets } from '@shared/schema';
 import { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
+import { SharedTweetPage } from '@/components/shared-tweet-page';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -76,11 +77,9 @@ export default async function SharedPage({ params }: Props) {
       notFound();
     }
 
-    // Redirect to main app with share parameter
-    redirect(`/?share=${id}`);
+    return <SharedTweetPage shareId={id} />;
   } catch (error) {
     console.error("Shared page error:", error);
-    // Redirect to main app on error
-    redirect('/');
+    notFound();
   }
 }
